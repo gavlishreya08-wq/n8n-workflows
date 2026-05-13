@@ -1,0 +1,374 @@
+{
+  "name": "My workflow 2 copy new woking(csv)_qa copy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "24c3157a-3178-4b5d-9b69-4a5759da2649",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        -16
+      ],
+      "id": "0e5b325c-164e-4f03-a232-a18d14eeda70",
+      "name": "Webhook",
+      "webhookId": "24c3157a-3178-4b5d-9b69-4a5759da2649"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "aee783f6-5e31-4337-afc0-5958550d813f",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a resume parser. Extract the following details from the given resume text and return only valid JSON (no extra text, no explanations):\n\n{\n  \"Full Name\": \"\",\n  \"Location\": \"\",\n  \"Email\": \"\",\n  \"Phone\": \"\",\n  \"LinkedIn\": \"\",\n  \"Skills\": [],\n  \"Work Experience\": [\n    {\n      \"Role\": \"\",\n      \"Company\": \"\",\n      \"Start Date\": \"\",\n      \"End Date\": \"\",\n      \"Key Responsibilities\": []\n    }\n  ],\n  \"Education\": [\n    {\n      \"Degree\": \"\",\n      \"Institution\": \"\",\n      \"Start Date\": \"\",\n      \"End Date\": \"\"\n    }\n  ],\n  \"Publications / Patents\": []\n}\n\nResume Text:\n{{ $json[\"text\"] }}\n",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        528,
+        -16
+      ],
+      "id": "fab694c3-3e99-41bc-9609-87f1061785de",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        528,
+        320
+      ],
+      "id": "8b3f02df-c3fb-4249-9c10-26400614f00a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aw47YO0m9mNpCBD8",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Based on the candidate metadata provided in {{ $json[\"text\"] }}, RETURN ONLY a CSV (no explanations, no backticks, no JSON, no extra text). \n\nUse this header (exact order):\nCategory,Difficulty,Question,Answer\n\nRules:\n- Categories: \"Generic Questions\", \"Technology Questions\", \"Coding Exercise\"\n- Each category must have exactly 5 questions (3 easy, 2 difficult)\n- Difficulty must be either \"easy\" or \"difficult\"\n- All questions must be **relevant to the candidate's background** in the provided metadata\n- Answer must contain a short, correct sample answer (not blank)\n- For text fields that contain commas, enclose the entire field in double quotes (\")\n- Escape any double quote in a field by doubling it (\"\")\n- Output exactly one header line, then 15 data rows (5 per category)\n- Output only the CSV text, nothing else\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        928,
+        272
+      ],
+      "id": "36499a7f-0802-494e-bbc0-e20b6b1db1d0",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aw47YO0m9mNpCBD8",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "C:\\Users\\Shreya gavli\\Documents\\output\\questions.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        480
+      ],
+      "id": "17490376-b1e5-48c2-9e1e-5c584f456f1e",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        -528
+      ],
+      "id": "0a130dc8-65e6-41b6-b9fa-ea31bfc29cc8",
+      "name": "Convert to File1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Extract the candidate metadata from the provided resume and RETURN ONLY a CSV (no explanations, no backticks, no JSON, no extra text).\n\nFormat each field as FieldName: value in the CSV. Use this order of fields:\nName, Email, Phone, Location, LinkedIn, Skills, Education, WorkExperience, Publications\n\nRules:\n- For list fields (Skills, Education, WorkExperience, Publications) join items with a semicolon ;\n- If a field contains commas, enclose the entire field in double quotes \"\n- Escape any double quote in a field by doubling it \"\"\n- Output exactly one header line, then one data line for the candidate\n- Each cell in the CSV should include the field name, e.g., Name: John Doe\n- Output only the CSV text, nothing else\n\nResume Text:\n{{ $json[\"text\"] }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        -240
+      ],
+      "id": "f802d890-aed6-4705-90a5-8bd36e5988ca",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aw47YO0m9mNpCBD8",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "candidatemetadata.json",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2192,
+        -336
+      ],
+      "id": "0643eec0-9c72-434f-9377-b372da5d98c2",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4pc3vWKRXrpza2HT",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        -336
+      ],
+      "id": "405b6de4-7982-4035-94ba-25d278705298",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "name": "qa_output.json",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2432,
+        288
+      ],
+      "id": "49344d94-f3af-4963-98f6-cd0bb7308455",
+      "name": "Upload file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4pc3vWKRXrpza2HT",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2128,
+        288
+      ],
+      "id": "6769218b-cd19-4835-a4fa-098472a7c70e",
+      "name": "Convert to File3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        []
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File3": {
+      "main": [
+        [
+          {
+            "node": "Upload file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2c25b3b6-149d-43de-b8d7-878cb8f2c944",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff21ec1d07fa1ee6d2629ddca4e891bd0cdb8a5db7af6d1337be53397834c4e7"
+  },
+  "id": "YAAwiHpwNgDXNjhp",
+  "tags": []
+}

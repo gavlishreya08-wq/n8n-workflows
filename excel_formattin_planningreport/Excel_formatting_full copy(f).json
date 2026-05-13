@@ -1,0 +1,185 @@
+{
+  "name": "Excel_formatting_full copy(f)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -6144,
+        -1392
+      ],
+      "id": "8dbc1f04-d810-4b4c-b6c9-323be6d18831",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:/Users/Shreya gavli/Desktop/Parent child Exp.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -5920,
+        -1392
+      ],
+      "id": "77c52a9d-b2e8-4f97-bc56-4f7824ee0c5d",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -5696,
+        -1392
+      ],
+      "id": "ce9e133c-9429-4d19-9b80-9ce4579cf9a6",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========== SAFE NORMALIZATION ==========\n\n// Ensure items array exists\nif (!items || items.length === 0) {\n  return [{ json: { error: \"No input rows received\" }}];\n}\n\n// Normalize column names safely\nitems.forEach(item => {\n  const data = item.json || item;\n\n  data.Parent = data.Parent || \"\";\n  data.MonthYear = data.MonthYear || \"\";\n\n  // Normalize children\n  data.Child1 = data.Child1 || data.Child || data.Child_1 || \"\";\n  data.Child2 = data.Child2 || data.Child_2 || \"\";\n  data.Child3 = data.Child3 || \"\";\n\n  // Normalize numbers\n  data.ExpendHrs = Number(data.ExpendHrs || 0);\n  data.WorkHrs = Number(data.WorkHrs || 0);\n\n  // Convert Excel serial to Month-Year if needed\n  if (typeof data.MonthYear === \"number\") {\n    let excelDate = data.MonthYear;\n    let jsDate = new Date((excelDate - 25569) * 86400 * 1000);\n    let m = jsDate.toLocaleString('en', { month: 'short' });\n    let y = jsDate.getFullYear().toString().slice(-2);\n    data.MonthYear = `${m}-${y}`;\n  }\n\n  // If MonthYear like \"Apr-25\" or \"Apr25\" or \"Apr 25\", normalize to \"Apr25\"\n  if (typeof data.MonthYear === \"string\" && data.MonthYear.length > 0) {\n    const my = String(data.MonthYear).trim();\n    const regex = /(?:\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\b)[\\s\\-]*?(\\d{2}|\\d{4})?/i;\n    const m = my.match(regex);\n    if (m) {\n      const mon = m[1].slice(0,3);\n      let yr = m[2] ? m[2] : (new Date()).getFullYear().toString().slice(-2);\n      if (yr.length === 4) yr = yr.slice(-2);\n      data.MonthYear = `${mon}${yr}`;\n    } else {\n      const monOnly = my.match(/\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\b/i);\n      if (monOnly) {\n        let yr = (new Date()).getFullYear().toString().slice(-2);\n        data.MonthYear = `${monOnly[1].slice(0,3)}${yr}`;\n      }\n    }\n  }\n\n  item.json = data;\n});\n\n// ========== COLLECT UNIQUE MONTHS AND SORT CHRONOLOGICALLY ==========\n\nfunction monthIndex(monStr) {\n  const map = { Jan:1, Feb:2, Mar:3, Apr:4, May:5, Jun:6, Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12 };\n  return map[monStr.slice(0,3)] || 0;\n}\n\nconst monthSet = new Set();\nfor (const it of items) {\n  const row = it.json || it;\n  if (!row.MonthYear) continue;\n\n  const match = String(row.MonthYear).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\\d{2})/i);\n  if (match) {\n    const mon = match[1].slice(0,3);\n    const yy = match[2];\n    monthSet.add(`${mon}${yy}`);\n  }\n}\n\nconst monthsArray = Array.from(monthSet).map(m => {\n  const mm = m.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\\d{2})/i);\n  const mon = mm ? mm[1].slice(0,3) : \"\";\n  const yy = mm ? mm[2] : \"\";\n  return { label: `${mon}${yy}`, month: monthIndex(mon), year: 2000 + Number(yy) };\n});\n\nmonthsArray.sort((a,b) => (a.year - b.year) || (a.month - b.month));\n\n// Determine groups\nlet group1Labels = [];\nlet group2Label = null;\n\nif (monthsArray.length === 0) {\n  const d = new Date();\n  const mon = d.toLocaleString('en', { month: 'short' }).slice(0,3);\n  const yy = d.getFullYear().toString().slice(-2);\n  group2Label = `${mon}${yy}`;\n} else if (monthsArray.length === 1) {\n  group1Labels = [];\n  group2Label = monthsArray[0].label;\n} else {\n  group1Labels = monthsArray.slice(0, -1).map(x => x.label);\n  group2Label = monthsArray[monthsArray.length - 1].label;\n}\n\nfunction makeLabel(arr) {\n  if (!arr || arr.length === 0) return \"\";\n  if (arr.length === 1) return arr[0];\n  return `${arr[0]}-${arr[arr.length - 1]}`;\n}\n\nconst group1Label = makeLabel(group1Labels);\nconst group2LabelFinal = group2Label;\n\n// ========== GROUPING ==========\n\nconst groups = {};\n\nfor (const row of items.map(i => i.json)) {\n  if (!row.Parent) continue;\n\n  const childTag = row.Child1 || row.Child2 || row.Child3 || \"\";\n  const key = row.Parent + \"|\" + childTag;\n\n  if (!groups[key]) {\n    groups[key] = {\n      Parent: row.Parent,\n      Child1: row.Child1,\n      Child2: row.Child2,\n      Child3: row.Child3,\n\n      [`Planned_${group1Label}`]: 0,\n      [`Planned_${group2LabelFinal}`]: 0,\n\n      [`Actual_${group1Label}`]: 0,\n      [`Actual_${group2LabelFinal}`]: 0\n    };\n  }\n\n  const my = String(row.MonthYear || \"\");\n  const isGroup2 = my === group2LabelFinal;\n\n  if (isGroup2) {\n    groups[key][`Planned_${group2LabelFinal}`] += row.ExpendHrs;\n    groups[key][`Actual_${group2LabelFinal}`] += row.WorkHrs;\n  } else {\n    groups[key][`Planned_${group1Label}`] += row.ExpendHrs;\n    groups[key][`Actual_${group1Label}`] += row.WorkHrs;\n  }\n}\n\n// ========== BUILD OUTPUT WITH DEVIATION % ==========\n\nconst output = [];\n\nfunction deviationPercent(actual, planned) {\n  if (planned === 0) return actual === 0 ? 0 : 100;\n  return ((actual - planned) / planned) * 100;\n}\n\nfor (const key of Object.keys(groups)) {\n  const r = groups[key];\n\n  const plannedTotal = (r[`Planned_${group1Label}`] || 0) + (r[`Planned_${group2LabelFinal}`] || 0);\n  const actualTotal = (r[`Actual_${group1Label}`] || 0) + (r[`Actual_${group2LabelFinal}`] || 0);\n\n  let row = {\n    Parent: r.Parent,\n    Child1: r.Child1,\n    Child2: r.Child2,\n    Child3: r.Child3,\n  };\n\n  // Planned\n  row[`Planned_${group1Label}`] = Number((r[`Planned_${group1Label}`] || 0).toFixed(2));\n  row[`Planned_${group2LabelFinal}`] = Number((r[`Planned_${group2LabelFinal}`] || 0).toFixed(2));\n  row[\"Planned_Total\"] = Number(plannedTotal.toFixed(2));\n\n  // Actual\n  row[`Actual_${group1Label}`] = Number((r[`Actual_${group1Label}`] || 0).toFixed(2));\n  row[`Actual_${group2LabelFinal}`] = Number((r[`Actual_${group2LabelFinal}`] || 0).toFixed(2));\n  row[\"Actual_Total\"] = Number(actualTotal.toFixed(2));\n\n  // Dev\n  row[`Dev_${group1Label}`] = Number(((row[`Actual_${group1Label}`] || 0) - (row[`Planned_${group1Label}`] || 0)).toFixed(2));\n  row[`Dev_${group2LabelFinal}`] = Number(((row[`Actual_${group2LabelFinal}`] || 0) - (row[`Planned_${group2LabelFinal}`] || 0)).toFixed(2));\n  row[\"Dev_Total\"] = Number((actualTotal - plannedTotal).toFixed(2));\n\n  // Dev%\n  row[`Dev%_${group1Label}`] = Number(deviationPercent(row[`Actual_${group1Label}`] || 0, row[`Planned_${group1Label}`] || 0).toFixed(2));\n  row[`Dev%_${group2LabelFinal}`] = Number(deviationPercent(row[`Actual_${group2LabelFinal}`] || 0, row[`Planned_${group2LabelFinal}`] || 0).toFixed(2));\n row[\"Dev%_Total\"] = Number(\n  (\n    (row[`Dev%_${group1Label}`] || 0) +\n    (row[`Dev%_${group2LabelFinal}`] || 0)\n  ).toFixed(2)\n);\n\n\n  // =============================\n  // REMOVE ZEROS inside this row\n  // =============================\n  for (const k of Object.keys(row)) {\n    if (typeof row[k] === \"number\" && row[k] === 0) {\n      row[k] = \"\";\n    }\n  }\n\n  // Skip rows where BOTH totals are blank\n  const plannedEmpty = row[\"Planned_Total\"] === \"\" || row[\"Planned_Total\"] === 0;\n  const actualEmpty  = row[\"Actual_Total\"] === \"\"  || row[\"Actual_Total\"] === 0;\n\n  if (plannedEmpty && actualEmpty) continue;\n\n  output.push(row);\n}\n\n// =============================\n// FINAL CLEANUP: remove ALL 0 values globally\n// =============================\nfor (const row of output) {\n  for (const k of Object.keys(row)) {\n    if (row[k] === 0) row[k] = \"\";\n  }\n}\n\nreturn output.map(o => ({ json: o }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5472,
+        -1392
+      ],
+      "id": "c7915e51-31aa-4501-b5a8-74e08103c126",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "command": "python \"C:/n8n_scripts/excel_formatter_full.py\" \"C:/n8n_scripts/input_full.xlsx\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -4800,
+        -1392
+      ],
+      "id": "450f17e4-f6a1-4c72-8e1f-f0c37692263c",
+      "name": "Execute Command",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:/n8n_scripts/input_full.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -5024,
+        -1392
+      ],
+      "id": "0265dca8-c019-4691-96cd-9f94ba01e6f4",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -5248,
+        -1392
+      ],
+      "id": "c4d93563-41f7-42ff-98ae-967dfeb1c56f",
+      "name": "Convert to File1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        []
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a14c8ff5-d628-4494-b4a2-0db30e660813",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff21ec1d07fa1ee6d2629ddca4e891bd0cdb8a5db7af6d1337be53397834c4e7"
+  },
+  "id": "5r261MXeNrY6UiS6",
+  "tags": []
+}

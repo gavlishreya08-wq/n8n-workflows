@@ -1,0 +1,484 @@
+{
+  "name": "weekly (f) api copy copy1",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Step 1: Access nested JSON inside Data.Result\nconst data = items[0].json?.Data?.Result || [];\n\n// Step 2: Handle empty data\nif (!Array.isArray(data) || data.length === 0) {\n  return [{ json: { message: \"No data received from API (Data.Result empty)\" } }];\n}\n\n// 🌴 Step 2.1: Define Holidays (YYYY-MM-DD)\nconst holidays = [\n  \"2025-10-02\", // Gandhi Jayanti\n \n];\n\n// Step 3: Convert YYYY-MM-DD → D/M/YYYY\nfunction formatDate(isoDate) {\n  if (!isoDate) return \"\";\n  const [year, month, day] = isoDate.split(\"-\");\n  return `${parseInt(day)}/${parseInt(month)}/${year}`;\n}\n\n// Step 4: Extract all unique dates\nconst allDates = [...new Set(data.map(d => d.Date.split(\"T\")[0]))].sort();\n\n// Step 5: Group by employee\nconst grouped = {};\ndata.forEach(d => {\n  const empName = d.EmployeeName?.trim() || \"Unknown\";\n  const desig = d.Designation || \"N/A\";\n  const dateKey = d.Date.split(\"T\")[0];\n  const key = `${empName}|${desig}`;\n\n  if (!grouped[key]) {\n    grouped[key] = {\n      EmployeeName: empName,\n      Designation: desig,\n    };\n    // Initialize each date as blank first\n    allDates.forEach(date => {\n      grouped[key][formatDate(date)] = \"\";\n    });\n  }\n\n  // Convert hours to integer (round if decimal)\n  const hours = Number.isFinite(d.Hrs) ? Math.round(d.Hrs) : 0;\n  grouped[key][formatDate(dateKey)] = hours;\n});\n\n// Step 6: Mark holidays as 0 for everyone\nObject.values(grouped).forEach(emp => {\n  allDates.forEach(date => {\n    if (holidays.includes(date)) {\n      const formattedDate = formatDate(date);\n      emp[formattedDate] = 0; // mark as 0 for holidays\n    }\n  });\n});\n\n// Step 7: Return grouped rows\nreturn Object.values(grouped).map(row => ({ json: row }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        208
+      ],
+      "id": "942f91ee-2a73-457c-a894-5e19e8265e63",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "sendTo": "gavlishreya08@gmail.com",
+        "subject": "Employee weekly Worklog",
+        "message": "Employee weekly worklog attached below",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        544
+      ],
+      "id": "64b44013-b399-4ebe-ac78-886760af54d2",
+      "name": "Send a message",
+      "webhookId": "154958eb-4785-4115-a67b-eb6c5a692fe3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "DCbyadxkM5SjayLT",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Step 1: Access nested JSON inside Data.Result\nconst data = items[0].json?.Data?.Result || [];\n\n// Step 2: Handle empty data\nif (!Array.isArray(data) || data.length === 0) {\n  return [{ json: { message: \"No data received from API (Data.Result empty)\" } }];\n}\n\n// 🌴 Step 2.1: Define Holidays (YYYY-MM-DD)\nconst holidays = [\n  \"2025-10-02\", // Gandhi Jayanti\n \n];\n\n// Step 3: Convert YYYY-MM-DD → D/M/YYYY\nfunction formatDate(isoDate) {\n  if (!isoDate) return \"\";\n  const [year, month, day] = isoDate.split(\"-\");\n  return `${parseInt(day)}/${parseInt(month)}/${year}`;\n}\n\n// Step 4: Extract all unique dates\nconst allDates = [...new Set(data.map(d => d.Date.split(\"T\")[0]))].sort();\n\n// Step 5: Group by employee\nconst grouped = {};\ndata.forEach(d => {\n  const empName = d.EmployeeName?.trim() || \"Unknown\";\n  const desig = d.Designation || \"N/A\";\n  const dateKey = d.Date.split(\"T\")[0];\n  const key = `${empName}|${desig}`;\n\n  if (!grouped[key]) {\n    grouped[key] = {\n      EmployeeName: empName,\n      Designation: desig,\n    };\n    // Initialize each date as blank first\n    allDates.forEach(date => {\n      grouped[key][formatDate(date)] = \"\";\n    });\n  }\n\n  // Convert hours to integer (round if decimal)\n  const hours = Number.isFinite(d.Hrs) ? Math.round(d.Hrs) : 0;\n  grouped[key][formatDate(dateKey)] = hours;\n});\n\n// Step 6: Mark holidays as 0 for everyone\nObject.values(grouped).forEach(emp => {\n  allDates.forEach(date => {\n    if (holidays.includes(date)) {\n      const formattedDate = formatDate(date);\n      emp[formattedDate] = 0; // mark as 0 for holidays\n    }\n  });\n});\n\n// Step 7: Return grouped rows\nreturn Object.values(grouped).map(row => ({ json: row }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        544
+      ],
+      "id": "77f58b5d-4f58-498b-bcac-5a6d001948ff",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        544
+      ],
+      "id": "61f2b5bc-7e8d-4528-ba64-9c93cc440edb",
+      "name": "Convert to File6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---- Technical Leads List ----\nconst tlNames = [\n  \"Anjusha Sandeep Gad\",\n  \"Apurva Suresh Naik\",\n  \"Austin Savio De Sa\",\n  \"Lakshiman Kalidas Chodankar\",\n  \"Nitish Naresh Chodankar\",\n  \"Saish Satish Malik\",\n  \"Shrinivas Alias Shaunak Ramakant Prabhu Gaonkar\",\n  \"Sidhesh Shashikant Shinde\",\n  \"Siya  Chavan\",\n  \"Tanvi Manmohan Samant\",\n  \"Varad Chandrakant Harmalkar\",\n  \"Vidhya Dattaram Candolkar\",\n  \"Viraj Dinesh Sinai Agni\",\n  \"Vishal Vyankatesh Vernekar\"\n];\n\n// ---- Normalize key names ----\n// Remove any hidden characters (like BOM) from \"﻿EmployeeName\"\nfunction normalizeKey(obj) {\n  const newObj = {};\n  for (const [key, value] of Object.entries(obj)) {\n    const cleanKey = key.replace(/[^\\x20-\\x7E]/g, \"\"); // remove hidden characters\n    newObj[cleanKey] = value;\n  }\n  return newObj;\n}\n\n// ---- Prepare input ----\nlet rows = items.map(i => normalizeKey(i.json));\n\n// ---- Filter only TLs ----\nlet filtered = rows.filter(r => tlNames.includes(r.EmployeeName?.trim()));\n\n// ---- Handle empty case ----\nif (filtered.length === 0) {\n  return [{ json: { message: \"No TLs found in the dataset\" } }];\n}\n\n// ---- Return properly formatted output ----\nreturn filtered.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        208
+      ],
+      "id": "6797ac2b-1e41-4160-be07-72b462363d46",
+      "name": "Code in JavaScript7"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -832,
+        208
+      ],
+      "id": "3fee0b90-00ff-40f1-9216-a744627ab492",
+      "name": "Convert to File7"
+    },
+    {
+      "parameters": {
+        "sendTo": "gavlishreya08@gmail.com",
+        "subject": "TL weekly worklog",
+        "message": "TL weekly worklog attached below",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        304,
+        208
+      ],
+      "id": "f34c82a2-91d2-4409-bb2e-1950195fb939",
+      "name": "Send a message3",
+      "webhookId": "226c1e61-48a2-4f26-9809-bab4bcc7a821",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "DCbyadxkM5SjayLT",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---- Technical Leads List ----\nconst tlNames = [\n  \"Anjusha Sandeep Gad\",\n  \"Apurva Suresh Naik\",\n  \"Austin Savio De Sa\",\n  \"Lakshiman Kalidas Chodankar\",\n  \"Nitish Naresh Chodankar\",\n  \"Saish Satish Malik\",\n  \"Shrinivas Alias Shaunak Ramakant Prabhu Gaonkar\",\n  \"Sidhesh Shashikant Shinde\",\n  \"Siya  Chavan\",\n  \"Tanvi Manmohan Samant\",\n  \"Varad Chandrakant Harmalkar\",\n  \"Vidhya Dattaram Candolkar\",\n  \"Viraj Dinesh Sinai Agni\",\n  \"Vishal Vyankatesh Vernekar\"\n].map(n => n.trim().toLowerCase()); // normalize\n\n// ---- Normalize hidden characters in keys ----\nfunction normalizeKey(obj) {\n  const newObj = {};\n  for (const [key, value] of Object.entries(obj)) {\n    const cleanKey = key.replace(/[^\\x20-\\x7E]/g, \"\"); // remove hidden chars\n    newObj[cleanKey] = value;\n  }\n  return newObj;\n}\n\n// ---- Normalize each row ----\nlet rows = items.map(i => normalizeKey(i.json));\n\n// ---- Filter OUT TLs ----\nlet filtered = rows.filter(r => {\n  const empName = (r.EmployeeName || \"\").trim().toLowerCase();\n  return !tlNames.includes(empName);\n});\n\n// ---- Handle empty case ----\nif (filtered.length === 0) {\n  return [{ json: { message: \"No non-TL employees found in the dataset\" } }];\n}\n\n// ---- Return properly formatted output ----\nreturn filtered.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        544
+      ],
+      "id": "0f72873a-82b9-4a73-973e-b275a027c1df",
+      "name": "Code in JavaScript8"
+    },
+    {
+      "parameters": {
+        "command": "python \"C:/Users/Shreya gavli/.n8n/color_excel.py\" \"C:/Users/Shreya gavli/Desktop/worklog/Tl_weekly/formatted_worklog_tl_weekly.xlsx\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        208
+      ],
+      "id": "d9673e14-bf77-4327-8429-54aff908413c",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:/Users/Shreya gavli/Desktop/worklog/Tl_weekly/formatted_worklog_tl_weekly.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        208
+      ],
+      "id": "44fb38a9-168a-44be-b475-a6413940e0d1",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:/Users/Shreya gavli/Desktop/worklog/Tl_weekly/formatted_worklog_tl_weekly.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        208
+      ],
+      "id": "2240658f-788a-41c0-929d-1a233da7c694",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "command": "python \"C:/Users/Shreya gavli/.n8n/color_excel.py\" \"C:/Users/Shreya gavli/Desktop/worklog/Employee_weekly/formatted_worklog_emp_weekly.xlsx\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        544
+      ],
+      "id": "59a32851-c27e-448e-acca-b6b34382910e",
+      "name": "Execute Command1"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:/Users/Shreya gavli/Desktop/worklog/Employee_weekly/formatted_worklog_emp_weekly.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        544
+      ],
+      "id": "f5ba81b8-38a5-4bac-a6dc-ed217ebdd812",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:/Users/Shreya gavli/Desktop/worklog/Employee_weekly/formatted_worklog_emp_weekly.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        0,
+        544
+      ],
+      "id": "1d4a9c8c-c1b1-4463-a550-5fa0313f9719",
+      "name": "Read/Write Files from Disk3"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"FromDate\": \"1-Mar-2026\",\n  \"ToDate\": \"31-Mar-2026\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1920,
+        368
+      ],
+      "id": "ad85dcdd-89a8-4dac-943f-fa4f511c0e47",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "https://upaygoa.com/JiraAPILIVE/API/FetchData/GetReportData",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ReportId",
+              "value": "0"
+            },
+            {
+              "name": "SubReportId",
+              "value": "19"
+            },
+            {
+              "name": "ProjId",
+              "value": "0"
+            },
+            {
+              "name": "FromDate",
+              "value": "={{$json[\"FromDate\"]}}"
+            },
+            {
+              "name": "ToDate",
+              "value": "={{$json[\"ToDate\"]}}"
+            },
+            {
+              "name": "UserKey",
+              "value": "U2755"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1712,
+        368
+      ],
+      "id": "2d2eead3-62a2-4fd5-a288-e1498732af0c",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "path": "6bfa7aea-4632-432c-846c-3c6b1b00c27b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2160,
+        368
+      ],
+      "id": "a16712d5-e044-462a-ade4-a0d36c9af344",
+      "name": "Webhook",
+      "webhookId": "6bfa7aea-4632-432c-846c-3c6b1b00c27b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File6": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript7": {
+      "main": [
+        [
+          {
+            "node": "Convert to File7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File7": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript8": {
+      "main": [
+        [
+          {
+            "node": "Convert to File6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk3": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6b53c107-3fb6-4d40-a4e1-634cc2e30e80",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff21ec1d07fa1ee6d2629ddca4e891bd0cdb8a5db7af6d1337be53397834c4e7"
+  },
+  "id": "XZro4K4RGBc2EYSt",
+  "tags": []
+}

@@ -1,0 +1,185 @@
+{
+  "name": "Excel_formatting_parent child grouping",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4016,
+        -960
+      ],
+      "id": "89eedf0c-3c29-4654-a840-8bf38036281d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:/Users/Shreya gavli/Documents/goa_online.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -3792,
+        -960
+      ],
+      "id": "ad1f8315-496e-4f9e-b327-c39cbb72db14",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -3568,
+        -960
+      ],
+      "id": "326421be-3fdd-4fe1-9422-a4195216831d",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\nlet lastParent = null;\n\n// Collect all dynamic child keys from all rows\nconst childKeys = new Set();\n\nfor (const item of items) {\n  const keys = Object.keys(item.json);\n  keys.forEach(k => {\n    if (k.toLowerCase().startsWith(\"child\")) {\n      childKeys.add(k);\n    }\n  });\n}\n\n// Sort Child1, Child2, Child3 numerically\nconst sortedChildKeys = [...childKeys].sort((a, b) => {\n  const numA = parseInt(a.replace(/\\D/g, \"\")) || 0;\n  const numB = parseInt(b.replace(/\\D/g, \"\")) || 0;\n  return numA - numB;\n});\n\n// Build HEADER ROW\nconst dateValue = \"25/11/2025\";\n\nconst headerRow = {\n  SrNo: \"\",\n  Parent: \"\",\n  PM: \"\",\n};\n\nsortedChildKeys.forEach(k => headerRow[k] = \"\");\n\nheaderRow[\"Planned Days\"] = dateValue;\nheaderRow[\"Actual Days\"] = dateValue;\nheaderRow[\"Deviation Days\"] = dateValue;\nheaderRow[\"Total Deviation %\"] = dateValue;\n\noutput.push({ json: headerRow });\n\n// STEP 3: Build ALL DATA ROWS + GROUP by Parent\nlet groups = {};      // parent → list of child rows\nlet parentOrder = []; // keeps original parent order\n\nfor (const item of items) {\n  const r = item.json;\n\n  const parentName = r[\"Parent\"];\n\n  if (parentName && !groups[parentName]) {\n    groups[parentName] = [];\n    parentOrder.push(parentName);\n  }\n\n  const planned = Number(r[\"Planned days\"]) || 0;\n  const actual = Number(r[\"Work days\"]) || 0;\n  const deviationDays = actual - planned;\n  const deviationPercent =\n    planned === 0 ? actual : ((actual - planned) / planned) * 100;\n\n  const row = {\n    SrNo: r[\"SrNo\"],\n    Parent: (r[\"Parent\"] !== lastParent) ? r[\"Parent\"] : \"\",\n    PM: r[\"PM\"],\n  };\n\n  //  (remove only zero)\n  sortedChildKeys.forEach(key => {\n    let raw = r[key];\n\n    if (raw === undefined || raw === null || raw === \"\") {\n      row[key] = \"\";\n      return;\n    }\n\n    raw = String(raw).trim().replace(/\\u2212/g, \"-\");\n    const val = Number(raw);\n\n    if (!isNaN(val)) {\n      row[key] = (val === 0) ? \"\" : val;\n    } else {\n      row[key] = raw;\n    }\n  });\n\n  row[\"Planned Days\"] = planned === 0 ? \"\" : planned;\n  row[\"Actual Days\"] = actual === 0 ? \"\" : actual;\n  row[\"Deviation Days\"] = deviationDays === 0 ? \"\" : deviationDays;\n  row[\"Total Deviation %\"] =\n    deviationPercent === 0 ? \"\" : deviationPercent.toFixed(2);\n\n  // Add this row to parent group\n  if (parentName) {\n    groups[parentName].push({ json: row });\n  }\n\n  lastParent = r[\"Parent\"];\n}\n\n// ----------------------------------------------------\n// SORT EACH PARENT'S CHILD ROWS BY \"Total Deviation %\"\n// ----------------------------------------------------\n\nfunction safeNum(v) {\n  let n = parseFloat(v);\n  return isNaN(n) ? null : n;\n}\n\n// Final output\nconst finalOutput = [output[0]]; // header row\n\nfor (const parent of parentOrder) {\n  // Add the parent row\n  const parentRow = groups[parent].find(r => r.json.Parent === parent);\n  if (parentRow) finalOutput.push(parentRow);\n\n  // Get child rows (excluding parent row)\n  const childRows = groups[parent].filter(r => r.json.Parent === \"\");\n\n  // Sort child rows by deviation %\n  childRows.sort((a, b) => {\n    let x = safeNum(a.json[\"Total Deviation %\"]);\n    let y = safeNum(b.json[\"Total Deviation %\"]);\n\n    if (x === null && y === null) return 0;\n    if (x === null) return 1;\n    if (y === null) return -1;\n\n    return y - x; // descending\n  });\n\n  finalOutput.push(...childRows);\n}\n\nreturn finalOutput;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3344,
+        -960
+      ],
+      "id": "090f9c92-fc8e-46c6-844f-4efec9fc34ad",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "command": "python \"C:/n8n_scripts/excel_formatter.py\" \"C:/n8n_scripts/input.xlsx\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -2672,
+        -960
+      ],
+      "id": "01aef216-99a1-47ed-aad1-23105db05e0e",
+      "name": "Execute Command",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:/n8n_scripts/input.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -2896,
+        -960
+      ],
+      "id": "4b4378fd-69f9-4d17-8236-c50c00a240ec",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -3120,
+        -960
+      ],
+      "id": "ea3acf4d-5d2b-4410-ae5a-50e66b2502c1",
+      "name": "Convert to File1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        []
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ea0fb0e-ef48-4dde-9009-5f0716072e15",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff21ec1d07fa1ee6d2629ddca4e891bd0cdb8a5db7af6d1337be53397834c4e7"
+  },
+  "id": "sn44o5Uf06G1qmaD",
+  "tags": []
+}
